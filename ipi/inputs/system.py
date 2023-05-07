@@ -217,6 +217,8 @@ class InputSystem(Input):
 
         # this creates a simulation object which gathers all the little bits
         # TODO use named arguments since this list is a bit too long...
+        print("beads = {}".format(self.beads.fetch().q))
+#        exit()
         rsys = ipi.engine.system.System(
             init=self.initialize.fetch(),
             beads=self.beads.fetch(),

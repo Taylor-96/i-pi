@@ -14,6 +14,7 @@ and the driver (that only cares about a single bead).
 
 import time
 import sys
+import inspect
 import threading
 from copy import deepcopy
 
@@ -80,7 +81,7 @@ class ForceBead(dobject):
         self.request = None
         self._getallcount = 0
 
-    def bind(self, atoms, cell, ff, output_maker):
+    def bind(self,bnum, atoms, cell, ff, output_maker):
         """Binds atoms, cell and a forcefield template to the ForceBead object.
 
         Args:
@@ -90,11 +91,17 @@ class ForceBead(dobject):
               and forces given an unit cell and atom positions of one replica
               of the system.
         """
-
+        
         global fbuid  # assign a unique identifier to each forcebead object
+ #       print("calling bind! bnum={}".format(bnum))
+#        print('caller name: {}'.format( inspect.stack()))
+
         with self._threadlock:
             self.uid = fbuid
+#            self.uid = bnum
+            print("uid={} bnum={}\n".format(self.uid,bnum))
             fbuid += 1
+
 
         # stores a reference to the atoms and cell we are computing forces for
         self.atoms = atoms
@@ -146,6 +153,9 @@ class ForceBead(dobject):
 
         with self._threadlock:
             if self.request is None and dd(self).ufvx.tainted():
+                print(self)
+
+                print("reqid={}".format(self.uid))
                 self.request = self.ff.queue(self.atoms, self.cell, reqid=self.uid)
 
     def get_all(self):
@@ -368,7 +378,7 @@ class ForceComponent(dobject):
         self.beads = beads
         for b in range(self.nbeads):
             new_force = ForceBead()
-            new_force.bind(beads[b], cell, self.ff, output_maker=output_maker)
+            new_force.bind(b,beads[b], cell, self.ff, output_maker=output_maker)
             self._forces.append(new_force)
 
         # f is a big array which assembles the forces on individual beads

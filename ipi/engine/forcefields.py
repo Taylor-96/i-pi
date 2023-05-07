@@ -151,7 +151,6 @@ class ForceField(dobject):
             'id': the id of the request, usually the bead number, 'start':
             the starting time for the calculation, used to check for timeouts.}.
         """
-
         par_str = " "
 
         if self.pars is not None:

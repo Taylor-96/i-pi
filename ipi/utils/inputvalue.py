@@ -827,6 +827,7 @@ class InputDictionary(Input):
         rdic = {}
         for f, v in self.instancefields.items():
             rdic[f] = self.__dict__[f].fetch()
+        print("rdic={}".format(rdic))
         return rdic
 
 

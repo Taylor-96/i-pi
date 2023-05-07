@@ -124,7 +124,7 @@ def init_file(
 
     rfile = open(filename, "r")
     ratoms = []
-
+    print("init_file mode={}".format(mode))
     info(
         " # Initializing from file %s. Dimension: %s, units: %s, cell_units: %s"
         % (filename, dimension, units, cell_units),
@@ -154,7 +154,9 @@ def init_chk(filename):
        checkpoint file.
     """
 
+
     # reads configuration from a checkpoint file
+    print("init_chk!*!")
     rfile = open(filename, "r")
     xmlchk = xml_parse_file(rfile)  # Parses the file.
 
@@ -189,7 +191,9 @@ def init_beads(
        ValueError: If called using an Initializer object with a 'manual' mode.
     """
 
+
     mode = iif.mode
+    print("init_beads mode = {}".format(mode))
     value = iif.value
     if mode == "chk":
         rbeads = init_chk(value)[0]

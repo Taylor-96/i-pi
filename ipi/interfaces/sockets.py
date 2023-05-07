@@ -296,18 +296,23 @@ class Driver(DriverSocket):
         Raises:
            InvalidStatus: Raised if the status is not NeedsInit.
         """
-
+        print("initialize!!!rid={}")
         if self.status & Status.NeedsInit:
             try:
                 self.sendall(Message("init"))
+                print(np.int32(rid))               
                 self.sendall(np.int32(rid))
+                print(np.int32(len(pars)))               
                 self.sendall(np.int32(len(pars)))
+                print("pars.encode()={}".format(pars.encode()))
                 self.sendall(pars.encode())
             except:
+
                 self.get_status()
-                return
+                print("except. status={}".format(self.get_status()))
+                return 
         else:
-            raise InvalidStatus("Status in init was " + self.status)
+            raise InvalidStatus("Status in init was {}".format(self.status))
 
     def sendpos(self, pos, h_ih):
         """Sends the position and cell data to the driver.
@@ -425,6 +430,7 @@ class Driver(DriverSocket):
         separate thread, and takes care of all the communication related to
         the request.
         """
+        print("dispatch request {}!".format(r))
 
         if not self.status & Status.Up:
             warning(
@@ -436,9 +442,11 @@ class Driver(DriverSocket):
         r["t_dispatched"] = time.time()
 
         self.get_status()
-        if self.status & Status.NeedsInit:
+        print("self.status={}. Status.NeedsInit = {}".format(self.status, Status.NeedsInit))
+        if( self.status & Status.NeedsInit):
             self.initialize(r["id"], r["pars"])
             self.status = self.get_status()
+            print("Now status={}".format(self.status))
 
         if not (self.status & Status.Ready):
             warning(
@@ -824,25 +832,60 @@ class InterfaceSocket(object):
             return False
 
         for r in self.prlist[:]:
+            print("looping over prlist. r[\"id\"] = {}".format(r["id"]))
             if match_ids == "match" and fc.lastreq is not r["id"]:
                 continue
             elif match_ids == "none" and fc.lastreq is not None:
                 continue
-            elif (
-                self.match_mode == "lock"
-                and match_ids == "none"
-                and (r["id"] in [c.lastreq for c in self.clients])
-            ):
+            elif (self.match_mode == "lock" and match_ids == "none"):
+                if(not (r["id"] in [c.lastreq for c in self.clients])):
+                    # try to match up clients and replicas for restart
+#                    print("fc.locked = {}".format(fc.locked))
+                    # If we enter this block when we are not trying to restart a pimd simulation then
+                    # the driver has received a buffer reading "STATUS     " and has sent back NEEDINIT. We then call initialize, sending "init" along with initialization data to the driver.
+                    # the driver reads in this data and sends back the replica id it received from i-pi
+                    # the fc has its lastreq attribute set to this id so that the next time around we can match this client with its replica 
+                    print("prlist = {}".format(self.prlist[:]))
+                    fc.status=Status.NeedsInit
+                    fc.initialize(r["id"], r["pars"])
+                    reply = ""
+                    while True:
+                        try:
+                            reply = fc.recv_msg()
+                            
+                            decoded_reply=reply.decode().strip()
+                            numeric_chars = ''.join(c for c in decoded_reply if c.isdigit())
+                            received_rid=int(numeric_chars)
+                            print("got reply {}. as int {}".format(reply, received_rid))
+                            break
+                        except socket.timeout:
+                            warning(
+                        " @SOCKET:   Issue with reply from driver when retrieving rid!", verbosity.low
+                            )
+                            continue
+#                    if(received_rid==r["id"]):
+                    print("rid=={} received rid=={}".format(r["id"], received_rid))
+                    fc.lastreq=received_rid
+                    fc.status = fc.get_status()
+                    print(" fc.status after initialize = {}".format( fc.status))
+                    continue 
+                    #return False
+
+                else:
+                    print("client already has assignment")
                 # if using lock mode and the user connects more clients than there are replicas, do not allow this client to
                 # be matched with a pending request.
-                continue
+                    continue
 
             elif match_ids == "free" and fc.locked:
                 continue
 
             # makes sure the request is marked as running and the client included in the jobs list
             fc.locked = fc.lastreq is r["id"]
+            print("fc\.locked=={}".format(fc.locked))
             r["status"] = "Running"
+           
+
             self.prlist.remove(r)
             info(
                 " @SOCKET: %s Assigning [%5s] request id %4s to client with last-id %4s (% 3d/% 3d : %s)"
